@@ -3,7 +3,6 @@ import streamlit as st
 import pickle
 import numpy as np
 from transformers import pipeline
-import textstat
 from scipy.sparse import hstack
 
 

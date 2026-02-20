@@ -1,0 +1,6 @@
+streamlit==1.54.0
+transformers
+torch
+scikit-learn
+numpy
+pandas
