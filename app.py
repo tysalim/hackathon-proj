@@ -97,12 +97,6 @@ elif page == "Text Simplifier":
     )
 
     def clean_output(text):
-        """
-        Clean and format model output:
-        - Remove repeated words/tokens
-        - Remove extra spaces
-        - Ensure proper sentence spacing
-        """
         import re
 
         # Remove repeated words (e.g., "the the" -> "the")
