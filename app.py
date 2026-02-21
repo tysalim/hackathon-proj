@@ -7,10 +7,13 @@ import re
 # -----------------------------
 # Page Config
 # -----------------------------
-st.set_page_config(page_title="Readability Toolkit", page_icon="📘", layout="wide")
+st.set_page_config(
+    page_title="Readability Toolkit",
+    layout="wide"
+)
 
 # -----------------------------
-# Load Models (Cached)
+# Cached Resources
 # -----------------------------
 @st.cache_resource(show_spinner=True)
 def get_grade_model():
@@ -28,7 +31,8 @@ def get_simplifier():
         )
         st.session_state["pipeline_type"] = "text2text"
         return simplifier
-    except KeyError:
+    except Exception:
+        # Fallback
         tokenizer = BartTokenizer.from_pretrained(model_name)
         model = BartForConditionalGeneration.from_pretrained(model_name)
 
@@ -40,18 +44,23 @@ def get_simplifier():
         st.session_state["pipeline_type"] = "fallback"
         return simplifier
 
-# Load cached models
+# -----------------------------
+# Load models
+# -----------------------------
 model, tfidf = get_grade_model()
 simplifier = get_simplifier()
 
 # -----------------------------
-# Sidebar Navigation
+# Sidebar
 # -----------------------------
 st.sidebar.title("Navigation")
-page = st.sidebar.radio("Choose a tool:", ["Grade Level Classifier", "Text Simplifier"])
+page = st.sidebar.radio(
+    "Choose a tool:",
+    ["Grade Level Classifier", "Text Simplifier"]
+)
 
 # -----------------------------
-# PAGE 1 — Grade Level Classifier
+# Grade Level Classifier
 # -----------------------------
 if page == "Grade Level Classifier":
     st.title("Reading Grade Level Classifier")
@@ -65,19 +74,24 @@ if page == "Grade Level Classifier":
             st.success(f"Predicted Grade Level: **Grade {grade}**")
 
             if grade <= 4:
-                st.info("This text is suitable for elementary school level.")
+                st.info("Suitable for elementary school level.")
             elif grade <= 8:
-                st.info("This text is suitable for middle school level.")
+                st.info("Suitable for middle school level.")
             else:
-                st.info("This text is suitable for high school level or above.")
+                st.info("Suitable for high school level or above.")
 
 # -----------------------------
-# PAGE 2 — Text Simplifier
+# Text Simplifier
 # -----------------------------
 elif page == "Text Simplifier":
     st.title("Text Simplifier")
     text_input = st.text_area("Enter text to simplify:", height=200)
-    target_grade = st.slider("Select target reading grade level:", 1, 12, 6)
+    target_grade = st.slider(
+        "Select target reading grade level:",
+        min_value=1,
+        max_value=12,
+        value=6
+    )
 
     def clean_output(text):
         # Remove repeated words
@@ -109,12 +123,12 @@ elif page == "Text Simplifier":
                     "- Replace difficult words with simpler alternatives\n"
                     f"Text: {text_input}"
                 )
+
                 if st.session_state.get("pipeline_type") == "text2text":
                     raw_output = simplifier(prompt, max_length=512, truncation=True)[0]["generated_text"]
                 else:
                     raw_output = simplifier(prompt, max_length=512)
 
                 result = clean_output(raw_output)
-
             st.subheader("Simplified Text")
             st.write(result)
