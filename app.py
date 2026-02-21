@@ -1,7 +1,7 @@
 import streamlit as st
-from transformers import pipeline
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
 import torch
+from model_utilities import load_model, predict_grade_level
 import re
 
 # -----------------------------
@@ -12,7 +12,9 @@ st.set_page_config(page_title="Readability Toolkit", page_icon="📘", layout="w
 # -----------------------------
 # Cached Models
 # -----------------------------
-
+@st.cache_resource(show_spinner=True)
+def get_grade_model():
+    return load_model()
 
 @st.cache_resource(show_spinner=True)
 def get_simplifier():
