@@ -1,6 +1,6 @@
 import streamlit as st
 from transformers import pipeline
-from model_utilities import load_model, predict_grade_level
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
 import torch
 import re
 
@@ -12,18 +12,21 @@ st.set_page_config(page_title="Readability Toolkit", page_icon="📘", layout="w
 # -----------------------------
 # Cached Models
 # -----------------------------
-@st.cache_resource(show_spinner=True)
-def get_grade_model():
-    return load_model()
+
 
 @st.cache_resource(show_spinner=True)
 def get_simplifier():
-    # FLAN-T5 small model (instruction-tuned)
     model_name = "google/flan-t5-small"
+
+    # Explicitly load tokenizer and model
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
+
+    # Create the pipeline manually
     simplifier_pipeline = pipeline(
-        "text2text-generation",
-        model=model_name,
-        tokenizer=model_name,
+        task="text2text-generation",
+        model=model,
+        tokenizer=tokenizer,
         device=0 if torch.cuda.is_available() else -1
     )
     return simplifier_pipeline
