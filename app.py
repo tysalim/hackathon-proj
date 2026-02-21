@@ -148,20 +148,5 @@ elif page == "Text Simplifier":
                 # Clean and format
                 result = clean_output(raw_output)
 
-            # Display in a styled div for word wrapping
             st.subheader("Simplified Text")
-            st.markdown(
-                f"""
-                <div style="
-                    background-color: #f8f9fa;
-                    padding: 15px;
-                    border-radius: 8px;
-                    line-height: 1.6;
-                    white-space: pre-wrap;
-                    word-wrap: break-word;
-                ">
-                    {result}
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
+            st.markdown(f"{result}")
