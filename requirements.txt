@@ -1,7 +1,12 @@
-streamlit==1.54.0
+streamlit
 transformers
 torch
-scikit-learn
-numpy
+datasets
 pandas
+numpy
+scikit-learn
+scipy
+xgboost
 textstat
+huggingface-hub
+sentencepiece
