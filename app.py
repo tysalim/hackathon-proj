@@ -81,7 +81,7 @@ elif page == "Text Simplifier":
         st.session_state.simplifier_input = ""
 
     text_input = st.text_area(
-        "Enter text to simplify:", 
+        "Enter text to simplify:",
         value=st.session_state.simplifier_input,
         height=200,
         key="simplifier_text_area"
@@ -90,14 +90,34 @@ elif page == "Text Simplifier":
 
     target_grade = st.slider("Select target reading grade level:", 1, 12, 6)
 
+    def build_prompt(text, grade):
+        """Create a dynamic prompt based on target grade."""
+        prompt = f"Simplify the following text for a student at grade {grade} level:\n"
+        # Stricter rules for lower grades
+        if grade <= 4:
+            prompt += "- Use very short sentences (≤8 words each)\n"
+            prompt += "- Use only extremely common words\n"
+            prompt += "- Avoid complex phrases or abstract ideas\n"
+        elif grade <= 8:
+            prompt += "- Use short sentences (≤12 words each)\n"
+            prompt += "- Use mostly common words\n"
+            prompt += "- Avoid very complex terms\n"
+        else:
+            prompt += "- Use clear, concise sentences\n"
+            prompt += "- Use mostly common words, some advanced allowed\n"
+            prompt += "- Keep ideas easy to understand\n"
+        prompt += f"Text: {text}"
+        return prompt
+
     def clean_output(text):
+        """Clean and format the simplified text."""
         # Remove repeated words
         text = re.sub(r'\b(\w+)( \1\b)+', r'\1', text)
         # Replace multiple punctuation
         text = re.sub(r'([.!?])\1+', r'\1', text)
         # Normalize whitespace
         text = re.sub(r'\s+', ' ', text).strip()
-        # Capitalize sentences
+        # Capitalize sentences and add line breaks
         sentences = re.split(r'([.!?])', text)
         cleaned = ""
         for i in range(0, len(sentences)-1, 2):
@@ -105,7 +125,7 @@ elif page == "Text Simplifier":
             p = sentences[i+1]
             if s:
                 s = s[0].upper() + s[1:] if len(s) > 1 else s.upper()
-                cleaned += s + p + " "
+                cleaned += s + p + "\n"
         return cleaned.strip()
 
     if st.button("Simplify Text"):
@@ -113,18 +133,11 @@ elif page == "Text Simplifier":
             st.warning("Please enter some text.")
         else:
             with st.spinner("Simplifying text..."):
-                prompt = (
-                    f"Simplify this text for a young student (grade {target_grade}):\n"
-                    "- Use short sentences (≤10 words each)\n"
-                    "- Use only common, simple words\n"
-                    "- Replace difficult words with simpler alternatives\n"
-                    f"Text: {text_input}"
-                )
+                prompt = build_prompt(text_input, target_grade)
 
-                # Run through pipeline
                 raw_output = simplifier(prompt, max_length=512)
                 
-                # Handle output from text2text pipeline (list of dicts) vs fallback (string)
+                # Handle pipeline outputs
                 if isinstance(raw_output, list) and "generated_text" in raw_output[0]:
                     raw_output = raw_output[0]["generated_text"]
                 else:
@@ -133,4 +146,4 @@ elif page == "Text Simplifier":
                 result = clean_output(raw_output)
 
             st.subheader("Simplified Text")
-            st.write(result)
+            st.text(result)  # using st.text() preserves line breaks
