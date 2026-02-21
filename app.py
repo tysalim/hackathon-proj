@@ -29,6 +29,7 @@ def get_simplifier():
         st.session_state["pipeline_type"] = "text2text"
         return simplifier
     except KeyError:
+        # Fallback for older transformers
         tokenizer = BartTokenizer.from_pretrained(model_name)
         model = BartForConditionalGeneration.from_pretrained(model_name)
 
@@ -49,6 +50,58 @@ simplifier = get_simplifier()
 # -----------------------------
 st.sidebar.title("Navigation")
 page = st.sidebar.radio("Choose a tool:", ["Grade Level Classifier", "Text Simplifier"])
+
+# -----------------------------
+# Utility Functions
+# -----------------------------
+def clean_output(text):
+    """Clean and format simplified text"""
+    # Remove repeated words
+    text = re.sub(r'\b(\w+)( \1\b)+', r'\1', text)
+    # Replace multiple punctuation
+    text = re.sub(r'([.!?])\1+', r'\1', text)
+    # Normalize whitespace
+    text = re.sub(r'\s+', ' ', text).strip()
+    # Capitalize sentences
+    sentences = re.split(r'([.!?])', text)
+    cleaned = ""
+    for i in range(0, len(sentences)-1, 2):
+        s = sentences[i].strip()
+        p = sentences[i+1]
+        if s:
+            s = s[0].upper() + s[1:] if len(s) > 1 else s.upper()
+            cleaned += s + p + " "
+    return cleaned.strip()
+
+def build_prompt(text, grade):
+    """Build strict, dynamic prompt based on target reading grade"""
+    prompt = f"Simplify the following text for a student at grade {grade} reading level.\n"
+    # Anti-regurgitation instruction
+    prompt += "- Rewrite entirely using your own words. Do NOT copy the original text.\n"
+
+    if grade <= 4:
+        prompt += (
+            "- Use very short sentences (max 5 words each)\n"
+            "- Use only the 1000 most common English words\n"
+            "- Avoid any complex or abstract words\n"
+            "- Split long sentences into multiple short sentences\n"
+            "- Keep meaning accurate but extremely simple\n"
+        )
+    elif grade <= 8:
+        prompt += (
+            "- Use short sentences (max 8 words)\n"
+            "- Use mostly common words\n"
+            "- Avoid advanced vocabulary\n"
+            "- Keep ideas clear and simple\n"
+        )
+    else:
+        prompt += (
+            "- Use clear sentences (max 12 words)\n"
+            "- Mostly common words, some advanced words allowed\n"
+            "- Keep meaning accurate and easy to understand\n"
+        )
+    prompt += f"Text: {text}"
+    return prompt
 
 # -----------------------------
 # PAGE 1 — Grade Level Classifier
@@ -76,57 +129,8 @@ if page == "Grade Level Classifier":
 # -----------------------------
 elif page == "Text Simplifier":
     st.title("Text Simplifier")
-
-    if "simplifier_input" not in st.session_state:
-        st.session_state.simplifier_input = ""
-
-    text_input = st.text_area(
-        "Enter text to simplify:",
-        value=st.session_state.simplifier_input,
-        height=200,
-        key="simplifier_text_area"
-    )
-    st.session_state.simplifier_input = text_input
-
+    text_input = st.text_area("Enter text to simplify:", height=200)
     target_grade = st.slider("Select target reading grade level:", 1, 12, 6)
-
-    def build_prompt(text, grade):
-        """Create a dynamic prompt based on target grade."""
-        prompt = f"Simplify the following text for a student at grade {grade} level:\n"
-        # Stricter rules for lower grades
-        if grade <= 4:
-            prompt += "- Use very short sentences (≤8 words each)\n"
-            prompt += "- Use only extremely common words\n"
-            prompt += "- Avoid complex phrases or abstract ideas\n"
-        elif grade <= 8:
-            prompt += "- Use short sentences (≤12 words each)\n"
-            prompt += "- Use mostly common words\n"
-            prompt += "- Avoid very complex terms\n"
-        else:
-            prompt += "- Use clear, concise sentences\n"
-            prompt += "- Use mostly common words, some advanced allowed\n"
-            prompt += "- Keep ideas easy to understand\n"
-        prompt += f"Text: {text}"
-        return prompt
-
-    def clean_output(text):
-        """Clean and format the simplified text."""
-        # Remove repeated words
-        text = re.sub(r'\b(\w+)( \1\b)+', r'\1', text)
-        # Replace multiple punctuation
-        text = re.sub(r'([.!?])\1+', r'\1', text)
-        # Normalize whitespace
-        text = re.sub(r'\s+', ' ', text).strip()
-        # Capitalize sentences and add line breaks
-        sentences = re.split(r'([.!?])', text)
-        cleaned = ""
-        for i in range(0, len(sentences)-1, 2):
-            s = sentences[i].strip()
-            p = sentences[i+1]
-            if s:
-                s = s[0].upper() + s[1:] if len(s) > 1 else s.upper()
-                cleaned += s + p + "\n"
-        return cleaned.strip()
 
     if st.button("Simplify Text"):
         if not text_input.strip():
@@ -135,15 +139,14 @@ elif page == "Text Simplifier":
             with st.spinner("Simplifying text..."):
                 prompt = build_prompt(text_input, target_grade)
 
-                raw_output = simplifier(prompt, max_length=512)
-                
-                # Handle pipeline outputs
-                if isinstance(raw_output, list) and "generated_text" in raw_output[0]:
-                    raw_output = raw_output[0]["generated_text"]
+                # Run through pipeline
+                if st.session_state.get("pipeline_type") == "text2text":
+                    raw_output = simplifier(prompt, max_length=256, truncation=True)[0]["generated_text"]
                 else:
-                    raw_output = str(raw_output)
+                    raw_output = simplifier(prompt, max_length=256)
 
+                # Clean and format
                 result = clean_output(raw_output)
 
             st.subheader("Simplified Text")
-            st.text(result)  # using st.text() preserves line breaks
+            st.markdown(f"```\n{result}\n```")
