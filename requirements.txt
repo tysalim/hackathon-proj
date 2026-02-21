@@ -9,3 +9,5 @@ scipy==1.12.0
 xgboost==2.0.3
 textstat==0.7.3
 datasets==2.14.5
+sentencepiece==0.1.96
+pyarrow==11.0.0
